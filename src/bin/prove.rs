@@ -1,4 +1,4 @@
-use bus_mapping::circuit_input_builder::FixedCParams;
+use bus_mapping::circuit_input_builder::CircuitsParams;
 use clap::Parser;
 use eth_types::Fr;
 use ethers_core::utils::hex;
@@ -23,7 +23,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use zk_proof_of_evm_exploit::{error::Error, types::zkevm_types::*, BuilderClient};
+use zk_proof_of_evm_exploit::{error::Error, BuilderClient};
 use zkevm_circuits::{
     super_circuit::SuperCircuit,
     util::{log2_ceil, SubCircuit},
@@ -51,8 +51,6 @@ struct Args {
     eth_rpc_url: String,
     #[arg(long = "fork-block", help = "Block number for mainnet fork [required]")]
     fork_block_number: usize,
-    #[arg(long, help = "Challenge bytecode [required]")]
-    challenge_bytecode: Bytes,
     #[arg(long, help = "Witness tx, which should solve the challenge [required]")]
     raw_tx: String,
     // optional args
@@ -93,7 +91,7 @@ async fn main() {
     let args = Args::parse();
 
     let builder = BuilderClient::from_config(
-        FixedCParams {
+        CircuitsParams {
             max_rws: args.max_rws,
             max_txs: MAX_TXS,
             max_calldata: MAX_CALLDATA,
@@ -101,7 +99,7 @@ async fn main() {
             max_exp_steps: args.max_exp_steps,
             max_bytecode: args.max_bytecode,
             max_evm_rows: args.max_evm_rows,
-            max_keccak_rows: args.max_keccak_rows,
+            max_keccak_rows: 5000,
         },
         Some(args.eth_rpc_url),
         Some(args.fork_block_number),
@@ -112,16 +110,6 @@ async fn main() {
     let chain_id = builder.anvil.eth_chain_id().unwrap().unwrap();
     let block_number = builder.anvil.block_number().unwrap();
     println!("chain_id: {chain_id:?}, block_number: {block_number:?}");
-
-    // updating challenge bytecode in local mainnet fork chain
-    builder
-        .anvil
-        .set_code(
-            bus_mapping::POX_CHALLENGE_ADDRESS,
-            args.challenge_bytecode.clone(),
-        )
-        .await
-        .unwrap();
 
     let hash = builder
         .anvil
@@ -149,13 +137,13 @@ async fn main() {
         .unwrap();
 
     let mut witness = builder
-        .gen_witness(tx.block_number.unwrap().as_usize(), args.challenge_bytecode)
+        .gen_witness(tx.block_number.unwrap().as_usize())
         .await
         .unwrap();
     witness.randomness = Fr::from(RANDOMNESS);
 
     println!("witness generated");
-    // println!("rws: {:#?}", witness.rws);
+    println!("rws: {:#?}", witness.rws);
 
     // let account_storage_rws = witness.rws[Target::Storage].clone();
 
@@ -185,8 +173,9 @@ async fn main() {
     //     panic!("challenge is not solved, please pass a valid solution");
     // }
 
-    let (_, rows_needed) = SuperCircuit::<Fr>::min_num_rows_block(&witness);
-    let circuit = SuperCircuit::<Fr>::new_from_block(&witness);
+    let (_, rows_needed) =
+        SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::min_num_rows_block(&witness);
+    let circuit = SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::new_from_block(&witness);
     let k = log2_ceil(64 + rows_needed);
     let instance = circuit.instance();
     if args.print {
@@ -259,7 +248,7 @@ impl RealProver {
 
     fn prove(
         &mut self,
-        circuit: SuperCircuit<Fr>,
+        circuit: SuperCircuit<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>,
         instance: Vec<Vec<Fr>>,
     ) -> Result<Vec<u8>, Error> {
         let instance_refs: Vec<&[Fr]> = instance.iter().map(|v| &v[..]).collect();
@@ -334,7 +323,10 @@ impl RealProver {
         Ok(())
     }
 
-    fn setup_circuit(&mut self, circuit: SuperCircuit<Fr>) -> Result<(), Error> {
+    fn setup_circuit(
+        &mut self,
+        circuit: SuperCircuit<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>,
+    ) -> Result<(), Error> {
         let verifying_key_path = self
             .dir_path
             .join(Path::new(&format!("circuit_verifying_key_{}", self.degree)));
@@ -342,10 +334,13 @@ impl RealProver {
             Ok(mut file) => {
                 println!("reading {}", verifying_key_path.display());
                 self.circuit_verifying_key = Some(
-                    VerifyingKey::<G1Affine>::read::<File, SuperCircuit<Fr>>(
+                    VerifyingKey::<G1Affine>::read::<
+                        File,
+                        SuperCircuit<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>,
+                    >(
                         &mut file,
                         self.serde_format,
-                        circuit.params(),
+                        // circuit.params(),
                     )
                     .unwrap(),
                 );
@@ -368,10 +363,13 @@ impl RealProver {
             Ok(mut file) => {
                 println!("reading {}", proving_key_path.display());
                 self.circuit_proving_key = Some(
-                    ProvingKey::<G1Affine>::read::<File, SuperCircuit<Fr>>(
+                    ProvingKey::<G1Affine>::read::<
+                        File,
+                        SuperCircuit<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>,
+                    >(
                         &mut file,
                         self.serde_format,
-                        circuit.params(),
+                        // circuit.params(),
                     )
                     .unwrap(),
                 );

@@ -1,7 +1,7 @@
 use anvil::eth::error::BlockchainError;
 use ethers_core::utils::rlp;
 use halo2_proofs::plonk;
-use partial_mpt;
+// use partial_mpt;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -11,7 +11,7 @@ pub enum Error {
     BusMappingError(Box<bus_mapping::Error>),
     Halo2Error(Box<plonk::Error>),
     StdError(Box<std::io::Error>),
-    PartialMptError(Box<partial_mpt::Error>),
+    // PartialMptError(Box<partial_mpt::Error>),
     InternalError(&'static str),
 }
 
@@ -39,11 +39,11 @@ impl From<plonk::Error> for Error {
     }
 }
 
-impl From<partial_mpt::Error> for Error {
-    fn from(err: partial_mpt::Error) -> Self {
-        Error::PartialMptError(Box::new(err))
-    }
-}
+// impl From<partial_mpt::Error> for Error {
+//     fn from(err: partial_mpt::Error) -> Self {
+//         Error::PartialMptError(Box::new(err))
+//     }
+// }
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {

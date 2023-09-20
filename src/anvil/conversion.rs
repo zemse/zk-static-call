@@ -149,11 +149,11 @@ impl<A: Conversion<Z>, Z> Conversion<zkevm_types::Block<Z>> for anvil_types::Blo
             nonce: convert_option(self.nonce),
             base_fee_per_gas: convert_option(self.base_fee_per_gas),
             other: zkevm_types::OtherFields::default(),
-            withdrawals_root: convert_option(self.withdrawals_root),
-            withdrawals: self
-                .withdrawals
-                .as_ref()
-                .map(|ws| ws.iter().map(|w| w.to_zkevm_type()).collect()),
+            // withdrawals_root: convert_option(self.withdrawals_root),
+            // withdrawals: self
+            //     .withdrawals
+            //     .as_ref()
+            //     .map(|ws| ws.iter().map(|w| w.to_zkevm_type()).collect()),
         }
     }
 }
@@ -176,7 +176,7 @@ impl Conversion<zkevm_types::TransactionReceipt> for anvil_types::TransactionRec
             logs_bloom: self.logs_bloom.to_zkevm_type(),
             transaction_type: convert_option(self.transaction_type),
             effective_gas_price: convert_option(self.effective_gas_price),
-            other: zkevm_types::OtherFields::default(),
+            // other: zkevm_types::OtherFields::default(),
         }
     }
 }
@@ -206,7 +206,7 @@ impl Conversion<zkevm_types::GethExecTrace> for anvil_types::GethTrace {
         )) = self.to_owned()
         {
             zkevm_types::GethExecTrace {
-                gas: anvil_trace.gas.as_u64(),
+                gas: eth_types::evm_types::Gas(anvil_trace.gas.as_u64()),
                 failed: anvil_trace.failed,
                 return_value: hex::encode(anvil_trace.return_value.as_ref()), // TODO see if 0x adjustment is needed
                 struct_logs: anvil_trace
@@ -214,11 +214,11 @@ impl Conversion<zkevm_types::GethExecTrace> for anvil_types::GethTrace {
                     .into_iter()
                     .map(|step| {
                         zkevm_types::GethExecStep {
-                            pc: step.pc,
+                            pc: eth_types::evm_types::ProgramCounter(step.pc as usize),
                             op: zkevm_types::OpcodeId::from_str(step.op.as_str()).unwrap(),
-                            gas: step.gas,
-                            gas_cost: step.gas_cost,
-                            refund: step.refund_counter.unwrap_or(0),
+                            gas: eth_types::evm_types::Gas(step.gas),
+                            gas_cost: eth_types::evm_types::GasCost(step.gas_cost),
+                            refund: eth_types::evm_types::Gas(step.refund_counter.unwrap_or(0)),
                             depth: u16::try_from(step.depth).expect("error converting depth"),
                             error: step.error,
                             stack: zkevm_types::Stack(
@@ -254,7 +254,7 @@ impl Conversion<zkevm_types::EIP1186ProofResponse> for anvil_types::EIP1186Proof
             address: self.address.to_zkevm_type(),
             balance: self.balance.to_zkevm_type(),
             code_hash: self.code_hash.to_zkevm_type(),
-            nonce: zkevm_types::U64::from(self.nonce.as_u64()),
+            nonce: zkevm_types::U256::from(self.nonce.as_u64()),
             storage_hash: self.storage_hash.to_zkevm_type(),
             account_proof: self
                 .account_proof
@@ -300,26 +300,26 @@ impl ConversionReverse<anvil_types::EIP1186ProofResponse> for zkevm_types::EIP11
     }
 }
 
-impl Conversion<zkevm_types::Withdrawal> for anvil_types::Withdrawal {
-    fn to_zkevm_type(&self) -> zkevm_types::Withdrawal {
-        zkevm_types::Withdrawal {
-            index: self.index,
-            validator_index: self.validator_index,
-            address: self.address,
-            amount: self.amount,
-        }
-    }
-}
-impl ConversionReverse<anvil_types::Withdrawal> for zkevm_types::Withdrawal {
-    fn to_anvil_type(&self) -> anvil_types::Withdrawal {
-        anvil_types::Withdrawal {
-            index: self.index,
-            validator_index: self.validator_index,
-            address: self.address,
-            amount: self.amount,
-        }
-    }
-}
+// impl Conversion<zkevm_types::Withdrawal> for anvil_types::Withdrawal {
+//     fn to_zkevm_type(&self) -> zkevm_types::Withdrawal {
+//         zkevm_types::Withdrawal {
+//             index: self.index,
+//             validator_index: self.validator_index,
+//             address: self.address,
+//             amount: self.amount,
+//         }
+//     }
+// }
+// impl ConversionReverse<anvil_types::Withdrawal> for zkevm_types::Withdrawal {
+//     fn to_anvil_type(&self) -> anvil_types::Withdrawal {
+//         anvil_types::Withdrawal {
+//             index: self.index,
+//             validator_index: self.validator_index,
+//             address: self.address,
+//             amount: self.amount,
+//         }
+//     }
+// }
 
 // Conversion from zkevm types to anvil types
 pub trait ConversionReverse<T> {

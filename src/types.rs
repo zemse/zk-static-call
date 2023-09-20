@@ -8,7 +8,7 @@ pub mod zkevm_types {
     pub use ethers::types::GethDebugTracingOptions; // intentionally
     pub use ethers_core::types::{
         transaction::eip2930::{AccessList, AccessListItem},
-        BlockNumber, Bloom, Log, OtherFields, TransactionReceipt, Withdrawal,
+        BlockNumber, Bloom, Log, OtherFields, TransactionReceipt,
     };
     pub type EthBlockFull = Block<Transaction>;
     pub type EthBlockHeader = Block<Hash>;
@@ -27,7 +27,7 @@ pub mod anvil_types {
     pub use ethers::types::{
         transaction::eip2930::AccessList, Address, Block, BlockId, BlockNumber, Bloom, Bytes,
         EIP1186ProofResponse, GethDebugTracingOptions, GethTrace, Log, OtherFields, StorageProof,
-        Transaction, TransactionReceipt, TxHash, Withdrawal, H160, H256, H64, U256, U64,
+        Transaction, TransactionReceipt, TxHash, H160, H256, H64, U256, U64,
     };
     pub type EthBlockFull = Block<Transaction>;
     pub type EthBlockHeader = Block<TxHash>;

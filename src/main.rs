@@ -1,12 +1,13 @@
-use bus_mapping::circuit_input_builder::FixedCParams;
-use eth_types::Bytes;
+use bus_mapping::circuit_input_builder::CircuitsParams;
 use halo2_proofs::{dev::MockProver, halo2curves::bn256::Fr};
-use std::str::FromStr;
 use zk_proof_of_evm_exploit::BuilderClient;
 use zkevm_circuits::{
     super_circuit::SuperCircuit,
     util::{log2_ceil, SubCircuit},
+    witness::Block,
 };
+
+const RANDOMNESS: u64 = 0x100;
 
 #[tokio::main]
 async fn main() {
@@ -15,7 +16,7 @@ async fn main() {
     const MAX_TXS: usize = 1;
     const MAX_CALLDATA: usize = 256;
 
-    let builder = BuilderClient::from_circuits_params(FixedCParams {
+    let builder = BuilderClient::from_circuits_params(CircuitsParams {
         max_rws: 357,
         max_txs: MAX_TXS,
         max_calldata: MAX_CALLDATA,
@@ -50,18 +51,16 @@ async fn main() {
         .unwrap()
         .unwrap();
 
-    let mut witness = builder
-        .gen_witness(
-            tx.block_number.unwrap().as_usize(),
-            Bytes::from_str("0x30ff").unwrap(),
-        )
+    let mut witness: Block<Fr> = builder
+        .gen_witness(tx.block_number.unwrap().as_usize())
         .await
         .unwrap();
     witness.randomness = Fr::from(0x100);
 
     println!("witness {witness:#?}");
-    let (_, rows_needed) = SuperCircuit::<Fr>::min_num_rows_block(&witness);
-    let circuit = SuperCircuit::<Fr>::new_from_block(&witness);
+    let (_, rows_needed) =
+        SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::min_num_rows_block(&witness);
+    let circuit = SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::new_from_block(&witness);
     let k = log2_ceil(64 + rows_needed);
     let instance = circuit.instance();
     println!("instance {instance:#?}");
