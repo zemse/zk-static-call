@@ -242,6 +242,7 @@ dependencies = [
 [[package]]
 name = "any_circuit_derive"
 version = "0.1.0"
+source = "git+https://github.com/zemse/axiom-eth?rev=3298386e#3298386e3db1910d5dba2c6ff1943904e1717cb4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -486,6 +487,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 [[package]]
 name = "axiom-eth"
 version = "0.2.1"
+source = "git+https://github.com/zemse/axiom-eth?rev=3298386e#3298386e3db1910d5dba2c6ff1943904e1717cb4"
 dependencies = [
  "any_circuit_derive",
  "base64 0.21.2",
@@ -797,6 +799,7 @@ checksum = "a3e2c3daef883ecc1b5d58c15adae93470a91d425f3532ba1695849656af3fc1"
 [[package]]
 name = "bus-mapping"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "axiom-eth",
  "eth-types",
@@ -1752,6 +1755,7 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "ethers-core 2.0.6",
  "ethers-signers 2.0.6",
@@ -2238,6 +2242,7 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "eth-types",
  "geth-utils",
@@ -2725,6 +2730,7 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "digest 0.7.6",
  "eth-types",
@@ -2756,6 +2762,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "env_logger 0.9.3",
  "gobuild",
@@ -3525,6 +3532,7 @@ dependencies = [
 [[package]]
 name = "keccak256"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "env_logger 0.9.3",
  "eth-types",
@@ -3788,6 +3796,7 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "eth-types",
  "ethers-core 2.0.6",
@@ -6971,6 +6980,7 @@ dependencies = [
 [[package]]
 name = "zkevm-circuits"
 version = "0.1.0"
+source = "git+https://github.com/zemse/zkevm-circuits?rev=e23dda4b#e23dda4b10617f5089a328d8b75c39edb52b9448"
 dependencies = [
  "array-init",
  "axiom-eth",
