@@ -1,5 +1,5 @@
 [package]
-name = "zk-proof-of-evm-exploit"
+name = "zk-eth-call"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,14 +14,15 @@ ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "80ac394" }
 bus-mapping = { git = "https://github.com/privacy-scaling-explorations/zkevm-circuits", branch = "main", features = [ "test" ] }
 eth-types = { git = "https://github.com/privacy-scaling-explorations/zkevm-circuits", branch = "main" }
 zkevm-circuits = { git = "https://github.com/privacy-scaling-explorations/zkevm-circuits", branch = "main" }
-# ethers-core = "=2.0.6"
-ethers-core = "0.17.0"
+axiom-eth = { path = "../axiom-eth/axiom-eth", default-features = false, features = ["halo2-pse", "aggregation", "evm"] }
+ethers-core = "2.0.6"
+ethers-providers = "2.0.6"
 halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git", tag = "v2023_02_02" }
 itertools = "0.10"
 rand_chacha = "0.3"
 
 # misc
-tokio = { version = "1.31", features = ["macros"] }
+tokio = { version = "1.28", features = ["macros"] }
 futures = { version = "0.3.*" }
 dotenv = "0.15.0"
 bytes = "1.1.0"

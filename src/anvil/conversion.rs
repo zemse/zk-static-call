@@ -149,11 +149,8 @@ impl<A: Conversion<Z>, Z> Conversion<zkevm_types::Block<Z>> for anvil_types::Blo
             nonce: convert_option(self.nonce),
             base_fee_per_gas: convert_option(self.base_fee_per_gas),
             other: zkevm_types::OtherFields::default(),
-            // withdrawals_root: convert_option(self.withdrawals_root),
-            // withdrawals: self
-            //     .withdrawals
-            //     .as_ref()
-            //     .map(|ws| ws.iter().map(|w| w.to_zkevm_type()).collect()),
+            withdrawals_root: None,
+            withdrawals: None,
         }
     }
 }
@@ -176,7 +173,7 @@ impl Conversion<zkevm_types::TransactionReceipt> for anvil_types::TransactionRec
             logs_bloom: self.logs_bloom.to_zkevm_type(),
             transaction_type: convert_option(self.transaction_type),
             effective_gas_price: convert_option(self.effective_gas_price),
-            // other: zkevm_types::OtherFields::default(),
+            other: zkevm_types::OtherFields::default(),
         }
     }
 }

@@ -1,6 +1,6 @@
 use bus_mapping::circuit_input_builder::CircuitsParams;
 use halo2_proofs::{dev::MockProver, halo2curves::bn256::Fr};
-use zk_proof_of_evm_exploit::BuilderClient;
+use zk_eth_call::BuilderClient;
 use zkevm_circuits::{
     super_circuit::SuperCircuit,
     util::{log2_ceil, SubCircuit},
