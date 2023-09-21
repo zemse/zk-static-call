@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use axiom_eth::providers::get_block_storage_input_async;
 pub use bus_mapping::{
     circuit_input_builder::{
         build_state_code_db, gen_state_access_trace, Access, AccessSet, AccessValue, Block,
@@ -9,6 +10,7 @@ pub use bus_mapping::{
     state_db::{CodeDB, StateDB},
 };
 use eth_types::Fr;
+use ethers_providers::Provider;
 
 // use partial_mpt::StateTrie;
 use zkevm_circuits::witness::block_convert;
@@ -23,6 +25,7 @@ pub struct BuilderClient {
     pub anvil: AnvilClient,
     pub chain_id: eth_types::Word,
     pub circuits_params: CircuitsParams,
+    pub eth_rpc_url: Option<String>,
 }
 
 pub fn get_state_accesses(
@@ -58,21 +61,26 @@ impl BuilderClient {
         eth_rpc_url: Option<String>,
         fork_block_number: Option<usize>,
     ) -> Result<Self, Error> {
-        let anvil = AnvilClient::setup(eth_rpc_url, fork_block_number).await;
-        Self::new(anvil, circuits_params)
+        let anvil = AnvilClient::setup(eth_rpc_url.clone(), fork_block_number).await;
+        Self::new(anvil, circuits_params, eth_rpc_url)
     }
 
     pub async fn from_circuits_params(circuits_params: CircuitsParams) -> Result<Self, Error> {
         let anvil = AnvilClient::default().await;
-        Self::new(anvil, circuits_params)
+        Self::new(anvil, circuits_params, None)
     }
 
-    pub fn new(anvil: AnvilClient, circuits_params: CircuitsParams) -> Result<Self, Error> {
+    pub fn new(
+        anvil: AnvilClient,
+        circuits_params: CircuitsParams,
+        eth_rpc_url: Option<String>,
+    ) -> Result<Self, Error> {
         if let Some(chain_id) = anvil.eth_chain_id()? {
             Ok(Self {
                 anvil,
                 chain_id: Word::from(chain_id.as_usize()),
                 circuits_params,
+                eth_rpc_url,
             })
         } else {
             Err(Error::InternalError(
@@ -104,19 +112,21 @@ impl BuilderClient {
             block.state_root = new_state_root;
         }
         let (state_db, code_db) = build_state_code_db(proofs, codes);
-        let builder = self.gen_inputs_from_state(
-            state_db,
-            code_db,
-            &block,
-            &traces,
-            history_hashes,
-            prev_state_root,
-        )?;
+        let builder = self
+            .gen_inputs_from_state(
+                state_db,
+                code_db,
+                &block,
+                &traces,
+                history_hashes,
+                prev_state_root,
+            )
+            .await?;
         Ok((builder, block))
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn gen_inputs_from_state(
+    async fn gen_inputs_from_state(
         &self,
         sdb: StateDB,
         code_db: CodeDB,
@@ -125,12 +135,32 @@ impl BuilderClient {
         history_hashes: Vec<Word>,
         prev_state_root: Word,
     ) -> Result<CircuitInputBuilder, Error> {
+        let axiom_inputs = get_block_storage_input_async(
+            &Provider::new_client(
+                "https://eth-mainnet.g.alchemy.com/v2/f-R85PXVLHxyAfQu5cngt47PYzOaJ99m",
+                10,
+                500,
+            )
+            .unwrap(),
+            16329190, // eth_block.number.unwrap().as_u32(),
+            "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB"
+                .parse()
+                .unwrap(),
+            vec![H256::zero()],
+            10,
+            10,
+        )
+        .await;
+
+        println!("axiom inputs: {:?}", axiom_inputs);
+
         let block = Block::new(
             self.chain_id,
             history_hashes,
             prev_state_root,
             eth_block,
             self.circuits_params,
+            axiom_inputs,
         )?;
         let mut builder = CircuitInputBuilder::new(sdb, code_db, block);
         builder.handle_block(eth_block, geth_traces)?;
@@ -307,7 +337,7 @@ mod tests {
     #[tokio::test]
     async fn test() {
         let anvil = AnvilClient::setup(None, None).await;
-        let bc = BuilderClient::new(anvil, CircuitsParams::default()).unwrap();
+        let bc = BuilderClient::new(anvil, CircuitsParams::default(), None).unwrap();
         assert_eq!(bc.chain_id.as_usize(), 31337);
 
         let hash = bc

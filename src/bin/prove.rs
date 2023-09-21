@@ -5,7 +5,7 @@ use ethers_core::utils::hex;
 use halo2_proofs::{
     dev::MockProver,
     halo2curves::bn256::{Bn256, G1Affine},
-    plonk::{create_proof, keygen_pk, keygen_vk, Circuit, ProvingKey, VerifyingKey},
+    plonk::{create_proof, keygen_pk, keygen_vk, ProvingKey, VerifyingKey},
     poly::{
         commitment::ParamsProver,
         kzg::{
@@ -23,7 +23,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use zk_proof_of_evm_exploit::{error::Error, BuilderClient};
+use zk_eth_call::{error::Error, BuilderClient};
 use zkevm_circuits::{
     super_circuit::SuperCircuit,
     util::{log2_ceil, SubCircuit},
@@ -141,42 +141,13 @@ async fn main() {
         .await
         .unwrap();
     witness.randomness = Fr::from(RANDOMNESS);
-
     println!("witness generated");
-    println!("rws: {:#?}", witness.rws);
-
-    // let account_storage_rws = witness.rws[Target::Storage].clone();
-
-    // for (i, rw) in account_storage_rws.iter().enumerate() {
-    //     match rw {
-    //         witness::Rw::AccountStorage {
-    //             rw_counter: _,
-    //             is_write: _,
-    //             account_address,
-    //             storage_key,
-    //             value: _,
-    //             value_prev: _,
-    //             tx_id: _,
-    //             committed_value: _,
-    //         } => {
-    //             if *account_address == args.challenge_address && *storage_key == args.challenge_slot
-    //             {
-    //                 witness.challenge_rw_index = Some(i);
-    //                 break;
-    //             }
-    //         }
-    //         _ => unreachable!(),
-    //     }
-    // }
-
-    // if witness.challenge_rw_index.is_none() {
-    //     panic!("challenge is not solved, please pass a valid solution");
-    // }
 
     let (_, rows_needed) =
         SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::min_num_rows_block(&witness);
     let circuit = SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::new_from_block(&witness);
-    let k = log2_ceil(64 + rows_needed);
+    let k = 19; // log2_ceil(64 + rows_needed);
+    println!("k: {k}");
     let instance = circuit.instance();
     if args.print {
         println!("block witness: {witness:#?}");
