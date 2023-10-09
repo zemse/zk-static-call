@@ -99,7 +99,7 @@ async fn main() {
             max_exp_steps: args.max_exp_steps,
             max_bytecode: args.max_bytecode,
             max_evm_rows: args.max_evm_rows,
-            max_keccak_rows: 5000,
+            max_keccak_rows: args.max_keccak_rows,
         },
         Some(args.eth_rpc_url),
         Some(args.fork_block_number),
@@ -116,6 +116,8 @@ async fn main() {
         .send_raw_transaction(args.raw_tx.parse().unwrap())
         .await
         .unwrap();
+
+    println!("waiting for confirmation");
 
     builder.anvil.wait_for_transaction(hash).await.unwrap();
 

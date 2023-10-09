@@ -152,7 +152,7 @@ impl BuilderClient {
         )
         .await;
 
-        println!("axiom inputs: {:?}", axiom_inputs);
+        // println!("axiom inputs: {:?}", axiom_inputs);
 
         let block = Block::new(
             self.chain_id,
@@ -236,7 +236,7 @@ impl BuilderClient {
                 .await?;
             traces.push(anvil_trace);
         }
-
+        // println!("traces: {:#?}", traces);
         Ok((block, traces))
     }
 
