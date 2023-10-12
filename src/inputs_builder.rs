@@ -134,7 +134,14 @@ impl BuilderClient {
     async fn gen_axiom_inputs(&self, access_set: AccessSet) -> EthBlockStorageInput {
         println!("access_set {:?}", access_set);
         // currently only proving one account
-        let first_account_storage_list = access_set.state.iter().collect_vec()[0];
+        let vec = access_set.state.iter().collect_vec();
+        let mut first_account_storage_list = vec[0];
+        for el in vec {
+            if !el.1.is_empty() {
+                first_account_storage_list = el;
+                break;
+            }
+        }
 
         get_block_storage_input_async(
             &Provider::new_client(self.eth_rpc_url.clone().unwrap().as_str(), 10, 500).unwrap(),
@@ -244,6 +251,7 @@ impl BuilderClient {
                 .await?;
 
             println!("returndata: {}", anvil_trace.return_value);
+            println!("gas used: {:?}", anvil_trace.gas);
             traces.push(anvil_trace);
         }
         // println!("traces: {:#?}", traces);

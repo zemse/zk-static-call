@@ -1,6 +1,12 @@
 use bus_mapping::circuit_input_builder::CircuitsParams;
 use clap::Parser;
 use eth_types::Fr;
+use ethers::{
+    abi::Address,
+    signers::{LocalWallet, Signer},
+    types::{transaction::eip2718::TypedTransaction, Bytes, TransactionRequest},
+    utils::parse_units,
+};
 use ethers_core::utils::hex;
 use halo2_proofs::{
     dev::MockProver,
@@ -23,18 +29,8 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use zk_eth_call::{error::Error, BuilderClient};
+use zk_eth_call::{anvil::conversion::Conversion, env, error::Error, BuilderClient};
 use zkevm_circuits::{super_circuit::SuperCircuit, util::SubCircuit};
-
-/// Usage:
-/// ./target/release/prove
-///     --mock
-///     --rpc-url https://eth-sepolia.g.alchemy.com/v2/<api_key>
-///     --fork-block 3147881
-///     --challenge-address 0xdf03add8bc8046df3b74a538c57c130cefb89b86
-///     --challenge-slot 0
-///     --raw-tx 0xf88c8084ee6b28008301388094df03add8bc8046df3b74a538c57c130cefb89b8680a46057361d00000000000000000000000000000000000000000000000000000000000000018401546d72a0f5b7e54553deeb044429b394595581501209a627beef020e764426aa0955e93aa00927cb7de78c15d2715de9a5cbde171c7202755864656cd4726ac43c76a9000a
-///
 
 const MAX_TXS: usize = 1;
 const MAX_CALLDATA: usize = 256;
@@ -44,12 +40,17 @@ const RANDOMNESS: u64 = 0x100;
 #[command(author, version, about)]
 struct Args {
     // required args
-    #[arg(long = "rpc-url", help = "Archive node for mainnet fork [required]")]
-    eth_rpc_url: String,
-    #[arg(long = "fork-block", help = "Block number for mainnet fork [required]")]
-    fork_block_number: usize,
-    #[arg(long, help = "Witness tx, which should solve the challenge [required]")]
-    raw_tx: String,
+    #[arg(long, help = "Archive node for mainnet fork [required]")]
+    rpc: String,
+    #[arg(long, help = "Block number for mainnet fork [required]")]
+    block: usize,
+    // #[arg(long, help = "Witness tx, which should solve the challenge [required]")]
+    // raw_tx: String,
+    #[arg(long, help = "destination [required]")]
+    to: String,
+    #[arg(long, help = "calldata [required]")]
+    calldata: String,
+
     // optional args
     #[arg(
         long,
@@ -98,8 +99,8 @@ async fn main() {
             max_evm_rows: args.max_evm_rows,
             max_keccak_rows: args.max_keccak_rows,
         },
-        Some(args.eth_rpc_url),
-        Some(args.fork_block_number),
+        Some(args.rpc),
+        Some(args.block),
     )
     .await
     .unwrap();
@@ -109,9 +110,29 @@ async fn main() {
     println!("chain_id: {chain_id:?}, block_number: {block_number:?}");
 
     println!("executing...");
+
+    let env = env::Env::load();
+    let wallet = env.signing_key.unwrap().parse::<LocalWallet>().unwrap();
+    let tx_req = TransactionRequest::new()
+        .to(args.to.parse::<Address>().unwrap())
+        .data(args.calldata.parse::<Bytes>().unwrap())
+        .nonce(
+            builder
+                .anvil
+                .get_nonce(wallet.address(), Some(block_number))
+                .await
+                .unwrap(),
+        )
+        .chain_id(chain_id.as_u64())
+        .gas_price(parse_units("10", 9).unwrap())
+        .gas(100_000);
+    let tx = TypedTransaction::Legacy(tx_req.clone());
+    let signature = wallet.sign_transaction(&tx).await.unwrap();
+    let tx = tx_req.rlp_signed(&signature);
+
     let hash = builder
         .anvil
-        .send_raw_transaction(args.raw_tx.parse().unwrap())
+        .send_raw_transaction(tx.to_zkevm_type())
         .await
         .unwrap();
 
@@ -123,7 +144,6 @@ async fn main() {
         .await
         .unwrap()
         .unwrap();
-    println!("gas used: {}", rc.gas_used.unwrap());
 
     // println!("tx confirmed on anvil, hash: {}", hex::encode(hash));
 

@@ -6,6 +6,7 @@ use std::env;
 pub struct Env {
     pub eth_rpc_url: Option<String>,
     pub fork_block_number: Option<usize>,
+    pub signing_key: Option<String>,
 }
 
 #[allow(dead_code)]
@@ -20,10 +21,15 @@ impl Env {
             Ok(val) => Some(U64::from_str_radix(&val, 10).unwrap().as_usize()),
             Err(_) => None,
         };
+        let signing_key = match env::var("SK") {
+            Ok(val) => Some(val),
+            Err(_) => None,
+        };
 
         Env {
             eth_rpc_url,
             fork_block_number,
+            signing_key,
         }
     }
 }
