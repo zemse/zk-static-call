@@ -10,10 +10,10 @@ anvil-core = { git = "https://github.com/foundry-rs/foundry.git", package = "anv
 ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "80ac394" }
 
 # circuits
-bus-mapping = { git = "https://github.com/zemse/zkevm-circuits", rev = "e23dda4b", features = [ "test" ] }
-eth-types = { git = "https://github.com/zemse/zkevm-circuits", rev = "e23dda4b" }
-zkevm-circuits = { git = "https://github.com/zemse/zkevm-circuits", rev = "e23dda4b" }
-axiom-eth = { git = "https://github.com/zemse/axiom-eth", rev = "3298386e", default-features = false, features = ["halo2-pse", "aggregation", "evm"] }
+bus-mapping = { git = "https://github.com/zemse/zkevm-circuits", rev = "915100b5", features = [ "test" ] }
+eth-types = { git = "https://github.com/zemse/zkevm-circuits", rev = "915100b5" }
+zkevm-circuits = { git = "https://github.com/zemse/zkevm-circuits", rev = "915100b5" }
+axiom-eth = { git = "https://github.com/zemse/axiom-eth", rev = "6bc3fe94", default-features = false, features = ["halo2-pse", "aggregation", "evm"] }
 halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git", tag = "v2023_02_02" }
 
 # misc
