@@ -24,10 +24,7 @@ use std::{
     str::FromStr,
 };
 use zk_eth_call::{error::Error, BuilderClient};
-use zkevm_circuits::{
-    super_circuit::SuperCircuit,
-    util::{log2_ceil, SubCircuit},
-};
+use zkevm_circuits::{super_circuit::SuperCircuit, util::SubCircuit};
 
 /// Usage:
 /// ./target/release/prove
@@ -111,13 +108,12 @@ async fn main() {
     let block_number = builder.anvil.block_number().unwrap();
     println!("chain_id: {chain_id:?}, block_number: {block_number:?}");
 
+    println!("executing...");
     let hash = builder
         .anvil
         .send_raw_transaction(args.raw_tx.parse().unwrap())
         .await
         .unwrap();
-
-    println!("waiting for confirmation");
 
     builder.anvil.wait_for_transaction(hash).await.unwrap();
 
@@ -127,9 +123,9 @@ async fn main() {
         .await
         .unwrap()
         .unwrap();
-    println!("transaction gas: {}", rc.gas_used.unwrap());
+    println!("gas used: {}", rc.gas_used.unwrap());
 
-    println!("tx confirmed on anvil, hash: {}", hex::encode(hash));
+    // println!("tx confirmed on anvil, hash: {}", hex::encode(hash));
 
     let tx = builder
         .anvil
@@ -138,6 +134,7 @@ async fn main() {
         .unwrap()
         .unwrap();
 
+    // println!("generating witness");
     let mut witness = builder
         .gen_witness(tx.block_number.unwrap().as_usize())
         .await
@@ -145,7 +142,7 @@ async fn main() {
     witness.randomness = Fr::from(RANDOMNESS);
     println!("witness generated");
 
-    let (_, rows_needed) =
+    let (_, _rows_needed) =
         SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::min_num_rows_block(&witness);
     let circuit = SuperCircuit::<Fr, MAX_TXS, MAX_CALLDATA, RANDOMNESS>::new_from_block(&witness);
     let k = 19; // log2_ceil(64 + rows_needed);
@@ -153,8 +150,8 @@ async fn main() {
     let instance = circuit.instance();
     if args.print {
         println!("block witness: {witness:#?}");
-        println!("instance: {instance:#?}");
     }
+    println!("instance: {:#?}", instance[0]);
 
     if args.mock {
         println!("running MockProver");

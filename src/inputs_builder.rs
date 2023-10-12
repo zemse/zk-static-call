@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use axiom_eth::providers::get_block_storage_input_async;
+use axiom_eth::{providers::get_block_storage_input_async, storage::EthBlockStorageInput};
 pub use bus_mapping::{
     circuit_input_builder::{
         build_state_code_db, gen_state_access_trace, Access, AccessSet, AccessValue, Block,
@@ -9,9 +9,10 @@ pub use bus_mapping::{
     operation::RW,
     state_db::{CodeDB, StateDB},
 };
-use eth_types::Fr;
+use eth_types::{BigEndianHash, Fr};
 use ethers_providers::Provider;
 
+use itertools::Itertools;
 // use partial_mpt::StateTrie;
 use zkevm_circuits::witness::block_convert;
 
@@ -26,6 +27,7 @@ pub struct BuilderClient {
     pub chain_id: eth_types::Word,
     pub circuits_params: CircuitsParams,
     pub eth_rpc_url: Option<String>,
+    pub fork_block_number: Option<usize>,
 }
 
 pub fn get_state_accesses(
@@ -62,18 +64,19 @@ impl BuilderClient {
         fork_block_number: Option<usize>,
     ) -> Result<Self, Error> {
         let anvil = AnvilClient::setup(eth_rpc_url.clone(), fork_block_number).await;
-        Self::new(anvil, circuits_params, eth_rpc_url)
+        Self::new(anvil, circuits_params, eth_rpc_url, fork_block_number)
     }
 
     pub async fn from_circuits_params(circuits_params: CircuitsParams) -> Result<Self, Error> {
         let anvil = AnvilClient::default().await;
-        Self::new(anvil, circuits_params, None)
+        Self::new(anvil, circuits_params, None, None)
     }
 
     pub fn new(
         anvil: AnvilClient,
         circuits_params: CircuitsParams,
         eth_rpc_url: Option<String>,
+        fork_block_number: Option<usize>,
     ) -> Result<Self, Error> {
         if let Some(chain_id) = anvil.eth_chain_id()? {
             Ok(Self {
@@ -81,6 +84,7 @@ impl BuilderClient {
                 chain_id: Word::from(chain_id.as_usize()),
                 circuits_params,
                 eth_rpc_url,
+                fork_block_number,
             })
         } else {
             Err(Error::InternalError(
@@ -106,8 +110,9 @@ impl BuilderClient {
     ) -> Result<(CircuitInputBuilder, EthBlockFull), Error> {
         let (mut block, traces, history_hashes, prev_state_root) =
             self.get_block(block_number).await?;
-        let access_set = get_state_accesses(&block, &traces)?;
-        let (proofs, codes, new_state_root) = self.get_state(block_number, access_set).await?;
+        let access_set: AccessSet = get_state_accesses(&block, &traces)?;
+        let (proofs, codes, new_state_root) =
+            self.get_state(block_number, access_set.clone()).await?;
         if block.state_root.is_zero() {
             block.state_root = new_state_root;
         }
@@ -120,9 +125,30 @@ impl BuilderClient {
                 &traces,
                 history_hashes,
                 prev_state_root,
+                self.gen_axiom_inputs(access_set).await,
             )
             .await?;
         Ok((builder, block))
+    }
+
+    async fn gen_axiom_inputs(&self, access_set: AccessSet) -> EthBlockStorageInput {
+        println!("access_set {:?}", access_set);
+        // currently only proving one account
+        let first_account_storage_list = access_set.state.iter().collect_vec()[0];
+
+        get_block_storage_input_async(
+            &Provider::new_client(self.eth_rpc_url.clone().unwrap().as_str(), 10, 500).unwrap(),
+            self.fork_block_number.unwrap() as u32,
+            *first_account_storage_list.0,
+            first_account_storage_list
+                .1
+                .iter()
+                .map(H256::from_uint)
+                .collect_vec(),
+            10,
+            10,
+        )
+        .await
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -134,26 +160,8 @@ impl BuilderClient {
         geth_traces: &[GethExecTrace],
         history_hashes: Vec<Word>,
         prev_state_root: Word,
+        axiom_inputs: EthBlockStorageInput,
     ) -> Result<CircuitInputBuilder, Error> {
-        let axiom_inputs = get_block_storage_input_async(
-            &Provider::new_client(
-                "https://eth-mainnet.g.alchemy.com/v2/f-R85PXVLHxyAfQu5cngt47PYzOaJ99m",
-                10,
-                500,
-            )
-            .unwrap(),
-            16329190, // eth_block.number.unwrap().as_u32(),
-            "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB"
-                .parse()
-                .unwrap(),
-            vec![H256::zero()],
-            10,
-            10,
-        )
-        .await;
-
-        // println!("axiom inputs: {:?}", axiom_inputs);
-
         let block = Block::new(
             self.chain_id,
             history_hashes,
@@ -234,6 +242,8 @@ impl BuilderClient {
                     },
                 )
                 .await?;
+
+            println!("returndata: {}", anvil_trace.return_value);
             traces.push(anvil_trace);
         }
         // println!("traces: {:#?}", traces);
@@ -266,18 +276,17 @@ impl BuilderClient {
             codes.insert(address, code.to_vec());
         }
 
-        let new_state_root = self
-            .gen_state_root(block_number, access_set, &proofs)
-            .await?;
+        let new_state_root = self.gen_state_root(block_number, access_set, &proofs)?;
         Ok((proofs, codes, new_state_root))
     }
 
-    async fn gen_state_root(
+    fn gen_state_root(
         &self,
-        block_number: usize,
-        access_set: AccessSet,
-        proofs: &Vec<EIP1186ProofResponse>,
+        _block_number: usize,
+        _access_set: AccessSet,
+        _proofs: &Vec<EIP1186ProofResponse>,
     ) -> Result<H256, Error> {
+        let _ = _proofs;
         // let mut trie = StateTrie::default();
 
         // for proof in proofs {
@@ -337,7 +346,7 @@ mod tests {
     #[tokio::test]
     async fn test() {
         let anvil = AnvilClient::setup(None, None).await;
-        let bc = BuilderClient::new(anvil, CircuitsParams::default(), None).unwrap();
+        let bc = BuilderClient::new(anvil, CircuitsParams::default(), None, None).unwrap();
         assert_eq!(bc.chain_id.as_usize(), 31337);
 
         let hash = bc

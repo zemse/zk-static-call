@@ -2,3 +2,6 @@
 rw.txt
 error.txt
 error-no-assign.txt
+out.txt
+traces.txt
+witness.txt
