@@ -64,12 +64,12 @@ pub fn new() -> (u32, ZkevmCircuit, Vec<Vec<Fr>>) {
         ..Default::default()
     };
 
-    let MOCK_DIFFICULTY: Word = Word::from(0x200000u64);
+    let mock_difficulty: Word = Word::from(0x200000u64);
 
     set_var("COINBASE", "0x0000000000000000000000000000000000000000");
     set_var("CHAIN_ID", MOCK_CHAIN_ID.to_string());
     let mut difficulty_be_bytes = [0u8; 32];
-    MOCK_DIFFICULTY.to_big_endian(&mut difficulty_be_bytes);
+    mock_difficulty.to_big_endian(&mut difficulty_be_bytes);
     // set_var("DIFFICULTY", hex::encode(difficulty_be_bytes));
     set_var("DIFFICULTY", "0");
 
@@ -111,16 +111,5 @@ pub fn new() -> (u32, ZkevmCircuit, Vec<Vec<Fr>>) {
     let public_instances = circuit.get_public_instances();
     instances.push(public_instances.into());
 
-    return (k, circuit, instances);
-    // println!("promise results fullfilled");
-
-    // println!("instance from super_circuit {:?}", instances);
-
-    // halo2_utils::compare::compare_all(&super_circuit, &circuit, Some(k));
-    // halo2_utils::assignments::print_all(&circuit, Some(k), Some(100));
-    // println!("running circuit");
-    // let prover = MockProver::run(k, &circuit, instances).unwrap();
-    // println!("verifying constraints");
-    // prover.assert_satisfied_par();
-    // println!("success!");
+    (k, circuit, instances)
 }

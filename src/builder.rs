@@ -1,5 +1,3 @@
-use std::env::set_var;
-
 /// Zkevm Circuit
 ///
 /// Prove a block using Axiom Component Framework
@@ -8,7 +6,6 @@ use axiom_eth::{
     halo2_base::AssignedValue,
     halo2_proofs::{
         circuit::Layouter,
-        dev::MockProver,
         halo2curves::bn256::Fr,
         plonk::{Circuit, ConstraintSystem},
     },
@@ -21,21 +18,17 @@ use axiom_eth::{
                 CoreBuilderParams,
             },
             promise_collector::PromiseCaller,
-            promise_loader::empty::EmptyPromiseLoader,
             types::{EmptyComponentType, LogicalEmpty},
         },
     },
     // Field,
 };
 
-use bus_mapping::circuit_input_builder::{CircuitInputBuilder, CircuitsParams, PrecompileEcParams};
 // use bus_mapping::circuit_input_builder::{FeatureConfig, FixedCParams};
-use eth_types::{Field, Word};
-use ethers_core::{abi::Component, utils::hex};
+use eth_types::Field;
 use zkevm_circuits::{
-    super_circuit::{test::block_1tx_trace, SuperCircuit as SuperCircuitBase, SuperCircuitConfig},
+    super_circuit::{SuperCircuit as SuperCircuitBase, SuperCircuitConfig},
     util::Challenges,
-    witness::{block_apply_mpt_state, block_convert},
 };
 
 pub const MAX_TXS: usize = 1;

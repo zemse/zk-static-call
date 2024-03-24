@@ -4557,10 +4557,6 @@ name = "halo2-base"
 version = "0.2.2"
 
 [[patch.unused]]
-name = "halo2-base"
-version = "0.2.2"
-
-[[patch.unused]]
 name = "ethers"
 version = "2.0.7"
 source = "git+https://github.com/scroll-tech/ethers-rs?branch=v2.0.7#e32dfd62e7cdec31160b91c5a646883594a586ba"
@@ -4569,3 +4565,7 @@ source = "git+https://github.com/scroll-tech/ethers-rs?branch=v2.0.7#e32dfd62e7c
 name = "ethers-etherscan"
 version = "2.0.7"
 source = "git+https://github.com/scroll-tech/ethers-rs?branch=v2.0.7#e32dfd62e7cdec31160b91c5a646883594a586ba"
+
+[[patch.unused]]
+name = "halo2-base"
+version = "0.2.2"
