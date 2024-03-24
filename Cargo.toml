@@ -1,0 +1,36 @@
+[package]
+name = "zk-static-call"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# zk
+axiom-codec = { git = "https://github.com/zemse/axiom-eth", branch = "scroll-static-call", default-features = false, features = ["halo2-pse"] }
+axiom-eth = { git = "https://github.com/zemse/axiom-eth", branch = "scroll-static-call", default-features = false, features = ["halo2-pse"] }
+axiom-query = { git = "https://github.com/zemse/axiom-eth", branch = "scroll-static-call", default-features = false, features = ["halo2-pse"] }
+halo2_proofs = { git = "https://github.com/zemse/halo2", branch = "scroll-static-call", features = ["circuit-params"] }
+zkevm-circuits = { git = "https://github.com/zemse/zkevm-circuits", branch = "scroll-static-call", features = ["test-circuits"] }
+bus-mapping = { git = "https://github.com/zemse/zkevm-circuits", branch = "scroll-static-call" }
+eth-types = { git = "https://github.com/zemse/zkevm-circuits", branch = "scroll-static-call" }
+# chore
+tokio = { version = "1.33", features = ["macros"] }
+anyhow = "1.0"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false }
+ethers-core = "=2.0.7"
+ethers-providers = "=2.0.7"
+
+[patch."https://github.com/privacy-scaling-explorations/halo2"]
+halo2_proofs = { git = "https://github.com/zemse/halo2", branch = "scroll-static-call", features = ["circuit-params"] }
+halo2_gadgets = { git = "https://github.com/zemse/halo2", branch = "scroll-static-call", features = ["circuit-params"] }
+
+[patch."https://github.com/scroll-tech/halo2"]
+halo2_proofs = { git = "https://github.com/zemse/halo2", branch = "scroll-static-call", features = ["circuit-params"] }
+halo2_gadgets = { git = "https://github.com/zemse/halo2", branch = "scroll-static-call", features = ["circuit-params"] }
+
+[patch.crates-io]
+ethers-core = { git = "https://github.com/scroll-tech/ethers-rs", branch = "v2.0.7" }
+ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs", branch = "v2.0.7" }
+ethers = { git = "https://github.com/scroll-tech/ethers-rs", branch = "v2.0.7" }
+ethers-etherscan = { git = "https://github.com/scroll-tech/ethers-rs", branch = "v2.0.7" }
+ethers-signers  = { git = "https://github.com/scroll-tech/ethers-rs", branch = "v2.0.7" }
