@@ -1,7 +1,9 @@
-use halo2_proofs::dev::MockProver;
-
 mod builder;
 mod circuit;
+mod common;
+mod init_state;
+
+use halo2_proofs::dev::MockProver;
 
 fn main() {
     let (k, circuit, instances) = circuit::new();

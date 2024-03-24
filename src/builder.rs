@@ -26,10 +26,13 @@ use axiom_eth::{
 
 // use bus_mapping::circuit_input_builder::{FeatureConfig, FixedCParams};
 use eth_types::Field;
+use halo2_proofs::circuit::Value;
 use zkevm_circuits::{
     super_circuit::{SuperCircuit as SuperCircuitBase, SuperCircuitConfig},
     util::Challenges,
 };
+
+use crate::init_state::{InitState, InitStateTable};
 
 pub const MAX_TXS: usize = 1;
 pub const MAX_CALLDATA: usize = 256;
@@ -56,12 +59,14 @@ impl CoreBuilderParams for ZkevmCircuitParams {
 #[derive(Clone, Default, Debug)]
 pub struct ZkevmCircuitInput<F: Field> {
     pub super_circuit: Option<SuperCircuit<F>>,
+    pub init_state: Option<InitState<F>>,
 }
 
 impl<F: Field> DummyFrom<ZkevmCircuitParams> for ZkevmCircuitInput<F> {
     fn dummy_from(_seed: ZkevmCircuitParams) -> Self {
         ZkevmCircuitInput {
             super_circuit: None,
+            init_state: None,
         }
     }
 }
@@ -70,6 +75,7 @@ impl<F: Field> DummyFrom<ZkevmCircuitParams> for ZkevmCircuitInput<F> {
 #[derive(Clone)]
 pub struct ZkevmCircuitConfig {
     super_circuit: (SuperCircuitConfig<Fr>, Challenges),
+    init_state_table: InitStateTable<Fr>,
 }
 
 // TODO reason why we have a circuit component struct as well as ZkevmCircuitInput
@@ -86,6 +92,7 @@ impl ComponentBuilder<Fr> for ZkevmCircuitBuilder<Fr> {
         Self {
             input: ZkevmCircuitInput {
                 super_circuit: None,
+                init_state: None,
             },
         }
     }
@@ -95,11 +102,12 @@ impl ComponentBuilder<Fr> for ZkevmCircuitBuilder<Fr> {
     }
 
     fn configure_with_params(
-        _meta: &mut ConstraintSystem<Fr>,
-        _params: Self::Params,
+        meta: &mut ConstraintSystem<Fr>,
+        params: Self::Params,
     ) -> Self::Config {
         ZkevmCircuitConfig {
-            super_circuit: SuperCircuit::<Fr>::configure(_meta),
+            super_circuit: SuperCircuit::<Fr>::configure(meta),
+            init_state_table: InitStateTable::<Fr>::construct(meta),
         }
     }
 
@@ -118,17 +126,31 @@ impl CoreBuilder<Fr> for ZkevmCircuitBuilder<Fr> {
     type CoreInput = ZkevmCircuitInput<Fr>;
 
     fn feed_input(&mut self, input: Self::CoreInput) -> anyhow::Result<()> {
-        // println!("feed_input {:?}", input);
         self.input = input;
         Ok(())
     }
 
     fn virtual_assign_phase0(
         &mut self,
-        _builder: &mut RlcCircuitBuilder<Fr>,
-        _promise_caller: PromiseCaller<Fr>,
+        builder: &mut RlcCircuitBuilder<Fr>,
+        promise_caller: PromiseCaller<Fr>,
     ) -> CoreBuilderOutput<Fr, Self::CompType> {
         println!("virtual_assign_phase0");
+
+        let ctx = builder.base.main(0);
+
+        let account_calls = self
+            .input
+            .init_state
+            .as_ref()
+            .unwrap()
+            .make_account_promise_calls(ctx, &promise_caller);
+        let storage_calls = self
+            .input
+            .init_state
+            .as_ref()
+            .unwrap()
+            .make_storage_promise_calls(ctx, &promise_caller);
 
         CoreBuilderOutput {
             public_instances: vec![],
@@ -139,6 +161,13 @@ impl CoreBuilder<Fr> for ZkevmCircuitBuilder<Fr> {
 
     fn raw_synthesize_phase0(&mut self, config: &Self::Config, layouter: &mut impl Layouter<Fr>) {
         println!("raw_synthesize_phase0");
+
+        let assigned_table = config.init_state_table.load(
+            self.input.init_state.as_ref().unwrap(),
+            layouter,
+            Value::known(Fr::zero()), // TODO use correct randomness here
+        );
+
         self.input
             .super_circuit
             .as_ref()

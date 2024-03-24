@@ -1,16 +1,30 @@
 use std::env::set_var;
 
-use crate::builder::{
-    SuperCircuit, ZkevmCircuitBuilder, ZkevmCircuitInput, ZkevmCircuitParams, MAX_CALLDATA,
-    MAX_INNER_BLOCKS, MAX_TXS, MOCK_CHAIN_ID,
+use crate::{
+    builder::{
+        SuperCircuit, ZkevmCircuitBuilder, ZkevmCircuitInput, ZkevmCircuitParams, MAX_CALLDATA,
+        MAX_INNER_BLOCKS, MAX_TXS, MOCK_CHAIN_ID,
+    },
+    init_state::InitState,
 };
 use axiom_eth::{
     halo2_base::gates::circuit::{BaseCircuitParams, CircuitBuilderStage},
     halo2curves::bn256::Fr,
     rlc::{circuit::RlcCircuitParams, virtual_region::RlcThreadBreakPoints},
     utils::component::{
-        circuit::ComponentCircuitImpl, promise_loader::empty::EmptyPromiseLoader, ComponentCircuit,
+        circuit::ComponentCircuitImpl,
+        promise_loader::{
+            combo::PromiseBuilderCombo,
+            empty::EmptyPromiseLoader,
+            single::{PromiseLoader, PromiseLoaderParams},
+        },
+        ComponentCircuit, ComponentType,
     },
+};
+use axiom_query::components::subqueries::{
+    account::types::{ComponentTypeAccountSubquery, OutputAccountShard},
+    common::shard_into_component_promise_results,
+    storage::types::{ComponentTypeStorageSubquery, OutputStorageShard},
 };
 use bus_mapping::circuit_input_builder::{CircuitInputBuilder, CircuitsParams};
 use eth_types::Word;
@@ -19,16 +33,26 @@ use zkevm_circuits::{
     witness::{block_apply_mpt_state, block_convert},
 };
 
-type ZkevmCircuit = ComponentCircuitImpl<Fr, ZkevmCircuitBuilder<Fr>, EmptyPromiseLoader<Fr>>;
-// use halo2_proofs::plonk::Circuit;
+type MultiPromiseLoader<F> = PromiseBuilderCombo<
+    F,
+    PromiseLoader<F, ComponentTypeAccountSubquery<F>>,
+    PromiseLoader<F, ComponentTypeStorageSubquery<F>>,
+>;
+
+type ZkevmCircuit = ComponentCircuitImpl<Fr, ZkevmCircuitBuilder<Fr>, MultiPromiseLoader<Fr>>;
 
 pub fn new() -> (u32, ZkevmCircuit, Vec<Vec<Fr>>) {
     let k = 19;
+    let storage_capacity = 10;
+    let account_capacity = 10;
 
     let circuit = ZkevmCircuit::new_from_stage(
         CircuitBuilderStage::Mock,
         ZkevmCircuitParams,
-        (),
+        (
+            PromiseLoaderParams::new_for_one_shard(account_capacity),
+            PromiseLoaderParams::new_for_one_shard(storage_capacity),
+        ),
         RlcCircuitParams {
             base: BaseCircuitParams {
                 k,
@@ -87,26 +111,52 @@ pub fn new() -> (u32, ZkevmCircuit, Vec<Vec<Fr>>) {
         &builder.mpt_init_state.expect("used non-light mode"),
     );
 
+    let init_state = InitState::build_from_witness_block(&block);
+
     let (k, super_circuit, mut instances) =
         SuperCircuit::<Fr>::build_from_witness_block(block).unwrap();
-
-    // let (k, super_circuit, mut instances, _) =
-    //     SuperCircuit_::<Fr>::build(data, circuits_params).unwrap();
-
-    // halo2_utils::info::print(&super_circuit);
-
-    // let prover = MockProver::run(k, &super_circuit, instances).unwrap();
-    // println!("verifying constraints");
-    // prover.assert_satisfied_par();
-
-    // println!("done");
-    // return;
 
     circuit
         .feed_input(Box::new(ZkevmCircuitInput {
             super_circuit: Some(super_circuit.clone()),
+            init_state: Some(init_state.clone()),
         }))
         .unwrap();
+
+    let promises = [
+        (
+            ComponentTypeAccountSubquery::<Fr>::get_type_id(),
+            shard_into_component_promise_results::<Fr, ComponentTypeAccountSubquery<Fr>>(
+                OutputAccountShard {
+                    results: init_state
+                        .clone()
+                        .accounts
+                        .iter()
+                        .map(|a| a.0.clone())
+                        .collect(),
+                }
+                .into(),
+            ),
+        ),
+        (
+            ComponentTypeStorageSubquery::<Fr>::get_type_id(),
+            shard_into_component_promise_results::<Fr, ComponentTypeStorageSubquery<Fr>>(
+                OutputStorageShard {
+                    results: init_state
+                        .clone()
+                        .storages
+                        .iter()
+                        .map(|a| a.0.clone())
+                        .collect(),
+                }
+                .into(),
+            ),
+        ),
+    ]
+    .into_iter()
+    .collect();
+    circuit.fulfill_promise_results(&promises).unwrap();
+    println!("promise results fullfilled");
 
     let public_instances = circuit.get_public_instances();
     instances.push(public_instances.into());
