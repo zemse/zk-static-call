@@ -81,8 +81,8 @@ impl<F: Field> InitState<F> {
                         }),
                     )
                     .unwrap();
-                ctx.constrain_equal(&assigned.value_hilo.hi(), &result.hi());
-                ctx.constrain_equal(&assigned.value_hilo.lo(), &result.lo());
+                ctx.constrain_equal(&assigned.value.hi(), &result.hi());
+                ctx.constrain_equal(&assigned.value.lo(), &result.lo());
 
                 assigned
             })

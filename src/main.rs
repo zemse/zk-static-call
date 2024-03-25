@@ -1,3 +1,4 @@
+#![feature(trivial_bounds)]
 mod builder;
 mod circuit;
 mod common;

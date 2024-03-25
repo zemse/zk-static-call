@@ -1,5 +1,5 @@
 use super::table::InitStateTable;
-use crate::common::{AxiomAssignedValue, Halo2AssignedCell, Payload};
+use crate::common::{AxiomAssignedValue, Halo2AssignedCell, HiLoRlc, Payload};
 use axiom_codec::{
     types::{field_elements::AnySubqueryResult, native::AccountSubquery},
     HiLo,
@@ -48,8 +48,7 @@ pub struct AccountPayload<AssignedType> {
     pub block_number: AssignedType, // TODO constrain the block number later
     pub address: AssignedType,
     pub field_idx: AssignedType,
-    pub value_hilo: HiLo<AssignedType>,
-    pub value_rlc: AssignedType,
+    pub value: HiLoRlc<AssignedType>,
 }
 
 pub type AccountSubqueryResult<F> = (AnySubqueryResult<AccountSubquery, H256>, PhantomData<F>);
@@ -81,8 +80,10 @@ impl<F: Field> Payload<F, AxiomAccountPayload<F>, Halo2AccountPayload<F>>
             block_number: ctx.load_witness(F::from(self.0.subquery.block_number as u64)),
             address: ctx.load_witness(self.0.subquery.addr.to_scalar().unwrap()),
             field_idx: ctx.load_witness(F::from(self.0.subquery.field_idx as u64)),
-            value_hilo: HiLo::<F>::from(self.0.value).assign(ctx),
-            value_rlc: ctx.load_witness(rlc::value(self.0.value.as_bytes(), F::ZERO)), // TODO take correct randomness
+            value: HiLoRlc {
+                hilo: HiLo::<F>::from(self.0.value).assign(ctx),
+                rlc: ctx.load_witness(rlc::value(self.0.value.as_bytes(), F::ZERO)), // TODO take correct randomness
+            },
         }
     }
 
@@ -150,8 +151,10 @@ impl<F: Field> Payload<F, AxiomAccountPayload<F>, Halo2AccountPayload<F>>
                         block_number: assigned_block_number,
                         address: assigned_address,
                         field_idx: assigned_field_tag,
-                        value_hilo: HiLo::from_hi_lo([assigned_value_hi, assigned_value_lo]),
-                        value_rlc: assigned_value_rlc,
+                        value: HiLoRlc {
+                            hilo: HiLo::from_hi_lo([assigned_value_hi, assigned_value_lo]),
+                            rlc: assigned_value_rlc,
+                        },
                     })
                 },
             )
